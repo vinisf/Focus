@@ -77,7 +77,7 @@ describe('fluxos do Focus', () => {
   it('mantém ícones e identificação da página em toda a navegação, inclusive mobile', async () => {
     wrapper = mount(App);
     const buttons = wrapper.findAll('nav button');
-    expect(buttons).toHaveLength(7);
+    expect(buttons).toHaveLength(9);
     for (const button of buttons) expect(button.find('.nav-icon svg').exists()).toBe(true);
     expect(buttons[0]!.attributes('aria-current')).toBe('page');
     await wrapper.find('[aria-label="Abrir menu"]').trigger('click');
@@ -214,7 +214,10 @@ describe('fluxos do Focus', () => {
     await wrapper.find('.suggestion-actions .primary').trigger('click');
     expect(store.data.tasks[0]!.status).toBe('active');
     expect(wrapper.find('.suggestion-actions .primary').text()).toBe('Concluir');
-    await wrapper.findAll('nav button')[1]!.trigger('click');
+    await wrapper
+      .findAll('nav button')
+      .find((b) => b.text().startsWith('Tarefas'))!
+      .trigger('click');
     expect(wrapper.find('.task-content').text()).toContain('Planejar a semana');
     await wrapper.find('.task-content').trigger('click');
     editor = wrapper.findComponent(TaskEditor);

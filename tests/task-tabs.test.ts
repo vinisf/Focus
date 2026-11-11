@@ -67,11 +67,13 @@ async function openTasks() {
 }
 
 describe('gerenciamento centralizado de tarefas', () => {
-  it('usa sete entradas, ícone list-todo e abas que distinguem vencimento de planejamento', async () => {
+  it('preserva as entradas existentes e adiciona Semana e Metas, ícone list-todo e abas que distinguem vencimento de planejamento', async () => {
     await openTasks();
     const nav = wrapper.findAll('nav button');
     expect(nav.map((b) => b.text().replace(/\d+$/, '').trim())).toEqual([
       'Meu Dia',
+      'Semana',
+      'Metas',
       'Tarefas',
       'Categorias',
       'Hábitos',
@@ -79,7 +81,12 @@ describe('gerenciamento centralizado de tarefas', () => {
       'Desempenho',
       'Configurações',
     ]);
-    expect(nav[1]!.find('svg').attributes('class')).toContain('list-todo');
+    expect(
+      nav
+        .find((b) => b.text().startsWith('Tarefas'))!
+        .find('svg')
+        .attributes('class'),
+    ).toContain('list-todo');
     expect(wrapper.findAll('[role="tab"]').map((b) => b.text())).toEqual([
       'Todas',
       'Próximas',

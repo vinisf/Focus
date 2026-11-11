@@ -48,7 +48,12 @@ export interface Repository {
   save(data: Data): void;
 }
 export class LocalRepository implements Repository {
-  constructor(private storage: Pick<Storage, 'getItem' | 'setItem'> = localStorage) {}
+  constructor(
+    private storage: Pick<Storage, 'getItem' | 'setItem'> = {
+      getItem: (key) => localStorage.getItem(key),
+      setItem: (key, value) => localStorage.setItem(key, value),
+    },
+  ) {}
   load(): Data | null {
     const raw = this.storage.getItem(KEY);
     if (!raw) return null;

@@ -32,7 +32,7 @@ export const validDay = (v: unknown): v is string =>
   /^\d{4}-\d{2}-\d{2}$/.test(v) &&
   dateKey(new Date(v + 'T12:00:00')) === v;
 const KEY = 'focus.assistant.v1';
-function valid(d: AssistantData) {
+export function validAssistant(d: AssistantData) {
   return (
     d?.version === 1 &&
     typeof d.notification?.enabled === 'boolean' &&
@@ -90,7 +90,7 @@ export const useAssistant = defineStore('assistant', () => {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (!valid(parsed)) throw new Error('invalid');
+      if (!validAssistant(parsed)) throw new Error('invalid');
       data.value = parsed;
     }
   } catch {
@@ -101,7 +101,7 @@ export const useAssistant = defineStore('assistant', () => {
     if (blocked.value) return false;
     try {
       const next = { ...data.value, ...fields };
-      if (!valid(next)) throw new Error('invalid');
+      if (!validAssistant(next)) throw new Error('invalid');
       localStorage.setItem(KEY, JSON.stringify(next));
       data.value = next;
       error.value = '';

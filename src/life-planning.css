@@ -1,0 +1,116 @@
+.life-planning {
+  max-width: 1440px;
+  margin: auto;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.life-planning > p {
+  margin: 12px 0 20px;
+}
+.life-planning fieldset {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 16px 0;
+}
+.life-planning label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.life-planning label:has(input[type='checkbox']) {
+  flex-direction: row;
+  align-items: center;
+}
+.life-planning input,
+.life-planning select,
+.life-planning textarea {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--input);
+  color: inherit;
+  min-width: 0;
+  max-width: 100%;
+}
+.life-planning option {
+  color: var(--text);
+  background: var(--input);
+}
+.life-planning button {
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.life-planning button:focus-visible,
+.life-planning input:focus-visible,
+.life-planning select:focus-visible,
+.life-planning textarea:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.life-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 12px 0;
+}
+.life-form {
+  display: grid;
+  gap: 14px;
+  max-width: 680px;
+  margin: 20px 0;
+}
+.life-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+.life-cards article,
+.week-grid article {
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+}
+.life-cards p,
+.week-grid p {
+  margin: 10px 0;
+}
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 24px;
+}
+.week-grid h2 {
+  font-size: 1rem;
+}
+.week-grid article {
+  margin-top: 12px;
+}
+.week-grid button {
+  width: 100%;
+  margin: 4px 0;
+}
+@media (max-width: 1100px) {
+  .week-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .week-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .life-planning fieldset {
+    padding: 10px;
+  }
+  .life-inline > label {
+    width: 100%;
+  }
+}
