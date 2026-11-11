@@ -112,7 +112,18 @@ export function validateLifePlanning(value: unknown): asserts value is LifePlann
     d.blocks.some(
       (b) =>
         !b ||
-        !fields(b, ['id', 'title', 'date', 'kind', 'start', 'end', 'status', 'goalId']) ||
+        !fields(b, [
+          'id',
+          'title',
+          'date',
+          'kind',
+          'start',
+          'end',
+          'status',
+          'goalId',
+          ...(b.description === undefined ? [] : ['description']),
+        ]) ||
+        (b.description !== undefined && !text(b.description)) ||
         !name(b.id) ||
         !name(b.title) ||
         !validLocalDate(b.date) ||

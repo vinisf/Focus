@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import WeeklyBlockEditor from '../components/WeeklyBlockEditor.vue';
 import { useLifePlanning } from '../stores/lifePlanning';
 import { planningToday, weekDays } from '../services/lifePlanningRepository';
 import { addDays } from '../utils/dates';
@@ -23,9 +24,6 @@ function edit(block?: unknown, date = selected.value) {
         status: 'planned',
         goalId: '',
       };
-}
-function save() {
-  if (draft.value && store.saveBlock(draft.value)) draft.value = null;
 }
 function cancel(block: unknown) {
   const b = JSON.parse(JSON.stringify(block)) as WeeklyBlock;
@@ -63,51 +61,7 @@ function remove(id: string) {
         ><button @click="selected = addDays(selected, 7)">Próxima semana</button
         ><button class="primary" @click="edit()">Novo bloco</button>
       </div>
-      <form v-if="draft" class="life-form" aria-label="Editar bloco" @submit.prevent="save">
-        <h2>Planejar bloco</h2>
-        <label>Título<input v-model="draft.title" required maxlength="200" /></label>
-        <label>Data<input v-model="draft.date" type="date" required /></label>
-        <label
-          >Tipo<select v-model="draft.kind">
-            <option value="flexible">Flexível</option>
-            <option value="fixed">Compromisso fixo</option>
-          </select></label
-        >
-        <p>
-          Para deixar um bloco flexível sem horário, limpe início e fim. Blocos com horário não
-          podem se sobrepor.
-        </p>
-        <label
-          >Início<input
-            v-model="draft.start"
-            type="time"
-            :required="draft.kind === 'fixed' || !!draft.end"
-        /></label>
-        <label
-          >Fim<input
-            v-model="draft.end"
-            type="time"
-            :required="draft.kind === 'fixed' || !!draft.start"
-        /></label>
-        <label
-          >Meta opcional<select v-model="draft.goalId">
-            <option value="">Sem meta</option>
-            <option v-for="goal in store.data.goals" :key="goal.id" :value="goal.id">
-              {{ goal.title }}
-            </option>
-          </select></label
-        >
-        <label
-          >Status<select v-model="draft.status">
-            <option value="planned">Planejado</option>
-            <option value="cancelled">Cancelado</option>
-          </select></label
-        >
-        <div class="life-inline">
-          <button class="primary">Salvar bloco</button
-          ><button type="button" @click="draft = null">Cancelar edição</button>
-        </div>
-      </form>
+      <WeeklyBlockEditor v-if="draft" :block="draft" @saved="draft = null" @cancel="draft = null" />
       <div class="week-grid">
         <section v-for="(day, index) in days" :key="day" :aria-label="labels[index]">
           <h2>{{ labels[index] }}</h2>

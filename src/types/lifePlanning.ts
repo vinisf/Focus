@@ -21,6 +21,7 @@ export interface Goal {
 export interface WeeklyBlock {
   id: string;
   title: string;
+  description?: string;
   date: string;
   kind: 'fixed' | 'flexible';
   start: string;

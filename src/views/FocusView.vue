@@ -38,6 +38,7 @@ import TaskEditor from '../components/TaskEditor.vue';
 import HabitEditor from '../components/HabitEditor.vue';
 
 import GoalsView from './GoalsView.vue';
+import DailyTimeline from '../components/DailyTimeline.vue';
 import WeekView from './WeekView.vue';
 import BackupSettings from '../components/BackupSettings.vue';
 import PerformanceView from './PerformanceView.vue';
@@ -421,6 +422,7 @@ function exportData() {
           />
 
           <button class="text-button" @click="navigate('Tarefas')">Ver minhas tarefas</button>
+          <DailyTimeline :now="now" />
         </template>
         <RoutineToday
           v-if="view === routinePage"

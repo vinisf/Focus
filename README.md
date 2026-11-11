@@ -8,6 +8,8 @@ O menu agora inclui **Metas** e **Semana**, preservando as entradas e funcionali
 
 Decisões de persistência, limites desta entrega e roteiro de validação: [METAS_SEMANA.md](METAS_SEMANA.md).
 
+**Importar plano pessoal**, em Metas, mescla arquivos `LifePlanningData` privados com prévia, tratamento de conflitos e backup antes da confirmação. **Meu Dia** inclui uma linha do tempo dos blocos diários, distinguindo sugestões de compromissos confirmados. Fluxo, privacidade e testes da issue #3: [IMPORTACAO_PLANO.md](IMPORTACAO_PLANO.md).
+
 ## Tarefas em uma só tela
 
 O menu lateral tem **Meu Dia**, **Semana**, **Metas**, **Tarefas**, **Categorias**, **Hábitos**, **Chamados IEMA**, **Desempenho** e **Configurações**. A entrada **Tarefas** usa o ícone `list-todo`; seu contador soma somente tarefas pendentes e em andamento, sem concluídas ou canceladas.
