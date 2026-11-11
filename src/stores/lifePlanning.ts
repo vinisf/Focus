@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { readonly, ref } from 'vue';
 import { emptyLifePlanning, LifePlanningRepository } from '../services/lifePlanningRepository';
 import type { Goal, LifeArea, LifePlanningData, WeeklyBlock } from '../types/lifePlanning';
+import { previewPersonalPlan, samePlan, type ImportOptions } from '../services/personalPlanImport';
 
 export const useLifePlanning = defineStore('lifePlanning', () => {
   const data = ref(emptyLifePlanning());
@@ -63,6 +64,37 @@ export const useLifePlanning = defineStore('lifePlanning', () => {
       blocks: [...data.value.blocks.filter((b) => b.id !== block.id), block],
     });
   }
+  function importPlan(
+    incoming: LifePlanningData,
+    options: ImportOptions,
+    expected: LifePlanningData,
+    confirmed: boolean,
+  ) {
+    if (blocked.value) return false;
+    if (!confirmed) {
+      error.value = 'Gere o backup e confirme a importação antes de aplicar.';
+      return false;
+    }
+    if (!samePlan(data.value, expected)) {
+      error.value = 'O planejamento mudou. Selecione o arquivo novamente para revisar a mesclagem.';
+      return false;
+    }
+    try {
+      const preview = previewPersonalPlan(expected, incoming, options);
+      if (preview.issues.length) {
+        error.value = preview.issues.join(' ');
+        return false;
+      }
+      if (!preview.changed) {
+        error.value = '';
+        return true;
+      }
+      return commit(preview.data);
+    } catch {
+      error.value = 'Não foi possível importar. Os dados anteriores foram preservados.';
+      return false;
+    }
+  }
   return {
     data: readonly(data),
     error,
@@ -72,6 +104,7 @@ export const useLifePlanning = defineStore('lifePlanning', () => {
     saveGoal,
     removeGoal,
     saveBlock,
+    importPlan,
     setTimezone: (timezone: string) => commit({ ...data.value, timezone }),
     removeBlock: (id: string) =>
       commit({ ...data.value, blocks: data.value.blocks.filter((b) => b.id !== id) }),

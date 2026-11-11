@@ -7,6 +7,159 @@
 .life-planning > p {
   margin: 12px 0 20px;
 }
+.personal-import {
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.personal-import summary {
+  cursor: pointer;
+  min-height: 42px;
+  padding: 8px 0;
+  font-weight: 600;
+}
+.personal-import summary:focus-visible {
+  outline: 3px solid var(--focus-ring);
+}
+.personal-import p {
+  margin: 10px 0;
+  overflow-wrap: anywhere;
+}
+.personal-import input[type='file'] {
+  width: 100%;
+}
+.personal-import > section > button,
+.personal-import > section > div > button {
+  margin: 8px 8px 8px 0;
+}
+.import-conflict {
+  margin: 12px 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+}
+.import-conflict h4 {
+  font-weight: 600;
+}
+.import-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 12px 0;
+}
+.import-comparison > div {
+  min-width: 0;
+  padding: 12px;
+  background: var(--bg);
+  border-radius: 8px;
+}
+.daily-timeline {
+  margin: 32px 0;
+  padding: 24px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+.timeline-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.timeline-heading h2 {
+  font-size: 20px;
+  font-weight: 600;
+}
+.timeline-heading p,
+.timeline-note {
+  color: var(--muted);
+}
+.timeline-list,
+.timeline-flexible {
+  list-style: none;
+  margin: 24px 0;
+  padding: 0;
+}
+.timeline-list > li {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 24px;
+  position: relative;
+  padding: 0 0 24px;
+}
+.timeline-list > li::before {
+  content: '';
+  position: absolute;
+  left: 90px;
+  top: 7px;
+  bottom: -7px;
+  width: 2px;
+  background: var(--line);
+}
+.timeline-list > li:last-child::before {
+  bottom: 24px;
+}
+.timeline-list > li::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  left: 86px;
+  top: 7px;
+  background: #b37823;
+}
+.timeline-list > .timeline-fixed::after {
+  background: var(--accent);
+}
+.timeline-list time {
+  color: var(--text);
+  font-weight: 600;
+  padding-top: 3px;
+}
+.timeline-list time span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.timeline-list article,
+.timeline-flexible article {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 14px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.timeline-kind {
+  font-size: 12px;
+  color: var(--muted);
+}
+.daily-timeline h3 {
+  font-weight: 600;
+}
+.timeline-description {
+  white-space: pre-wrap;
+  margin: 10px 0;
+}
+.timeline-list button,
+.timeline-flexible button {
+  margin-top: 12px;
+  text-align: left;
+}
+.timeline-flexible {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+}
+.daily-timeline .life-form fieldset > label {
+  margin: 12px 0;
+}
 .life-planning fieldset {
   min-width: 0;
   border: 1px solid var(--line);
@@ -104,6 +257,25 @@
   }
 }
 @media (max-width: 600px) {
+  .daily-timeline {
+    padding: 14px;
+  }
+  .timeline-list > li {
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 18px;
+  }
+  .timeline-list > li::before {
+    left: 64px;
+  }
+  .timeline-list > li::after {
+    left: 60px;
+  }
+  .import-comparison {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .personal-import {
+    padding: 12px;
+  }
   .week-grid {
     grid-template-columns: minmax(0, 1fr);
   }

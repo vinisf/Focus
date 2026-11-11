@@ -4,6 +4,7 @@ import { useLifePlanning } from '../stores/lifePlanning';
 import { useTasks } from '../stores/tasks';
 import { goalProgress } from '../services/lifePlanningRepository';
 import type { Goal } from '../types/lifePlanning';
+import PersonalPlanImport from '../components/PersonalPlanImport.vue';
 const store = useLifePlanning();
 const tasks = useTasks();
 const areaName = ref('');
@@ -54,6 +55,7 @@ function addMilestone() {
   <section class="life-planning" aria-label="Metas">
     <p>Conecte suas tarefas a objetivos e acompanhe marcos verificáveis.</p>
     <p v-if="store.error" class="error-banner" role="alert">{{ store.error }}</p>
+    <PersonalPlanImport />
     <fieldset :disabled="store.blocked">
       <legend>Metas e áreas da vida</legend>
       <form class="life-inline" @submit.prevent="saveArea">
