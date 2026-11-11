@@ -3,13 +3,16 @@ import { Check, CalendarDays, Clock3, Repeat2, Pencil } from 'lucide-vue-next';
 import type { Task } from '../types';
 import { useTasks } from '../stores/tasks';
 import { dateKey, displayDate } from '../utils/dates';
-defineProps<{ task: Task; today: string }>();
+defineProps<{ task: Task; today: string; compact?: boolean }>();
 defineEmits<{ edit: [task: Task]; completed: [] }>();
 const store = useTasks();
 const priorities = { low: 'Baixa', medium: 'Média', high: 'Alta', urgent: 'Urgente' };
 </script>
 <template>
-  <article class="task-row" :class="{ completed: task.status === 'done' }">
+  <article
+    class="task-row"
+    :class="{ completed: task.status === 'done', 'task-row-compact': compact }"
+  >
     <button
       class="check-task"
       :class="{ checked: task.status === 'done' }"
@@ -25,22 +28,35 @@ const priorities = { low: 'Baixa', medium: 'Média', high: 'Alta', urgent: 'Urge
       <strong>{{ task.title }}</strong
       ><span class="task-meta"
         ><span
+          v-if="!compact"
           :style="{ color: store.data.categories.find((c) => c.id === task.categoryId)?.color }"
           >● {{ store.data.categories.find((c) => c.id === task.categoryId)?.name }}</span
         ><span><Clock3 :size="12" /> {{ task.duration }} min</span
+        ><span v-if="task.integrationName && !compact">Integração · sugestão opcional</span
         ><span v-if="task.dueDate" :class="{ late: task.dueDate < today && task.status !== 'done' }"
           ><CalendarDays :size="12" />{{
             task.dueDate === today ? 'Hoje' : displayDate(task.dueDate)
           }}
           {{ task.time }}</span
-        ><Repeat2 v-if="task.recurrence" :size="13" /><span v-if="task.plannedDate"
-          >Planejada:
+        ><Repeat2 v-if="task.recurrence && !compact" :size="13" /><span
+          v-if="task.plannedDate && !compact"
+          >{{ task.integrationName ? 'Retomar:' : 'Planejada:' }}
           {{ task.plannedDate === today ? 'hoje' : displayDate(task.plannedDate) }}</span
         ></span
       >
     </button>
-    <span class="priority" :class="task.priority">{{ priorities[task.priority] }}</span>
+    <span v-if="!compact" class="priority" :class="task.priority">{{
+      priorities[task.priority]
+    }}</span>
+    <button
+      v-if="task.integrationName && ['pending', 'active'].includes(task.status)"
+      class="text-button"
+      @click="store.postponeIntegration(task)"
+    >
+      Adiar para amanhã
+    </button>
     <select
+      v-if="!compact"
       class="status-select"
       aria-label="Status da tarefa"
       :value="task.status"
@@ -52,13 +68,19 @@ const priorities = { low: 'Baixa', medium: 'Média', high: 'Alta', urgent: 'Urge
       <option value="cancelled">Cancelada</option>
     </select>
     <button
+      v-if="!compact"
       class="icon-button plan-button"
       aria-label="Planejar para hoje"
       title="Planejar para hoje"
       @click="store.plan(task, dateKey())"
     >
       <CalendarDays :size="16" /></button
-    ><button class="icon-button" aria-label="Editar tarefa" @click="$emit('edit', task)">
+    ><button
+      v-if="!compact"
+      class="icon-button"
+      aria-label="Editar tarefa"
+      @click="$emit('edit', task)"
+    >
       <Pencil :size="15" />
     </button>
   </article>

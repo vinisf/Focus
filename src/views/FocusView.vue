@@ -1,8 +1,7 @@
-<script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+﻿<script setup lang="ts">
+import { computed, nextTick, ref, watch } from 'vue';
 import {
   Sun,
-  Layers,
   CalendarDays,
   CalendarOff,
   CircleCheck,
@@ -11,8 +10,6 @@ import {
   Search,
   ChevronRight,
   ArrowUpRight,
-  Sparkles,
-  Play,
   Moon,
   Menu,
   X,
@@ -20,24 +17,109 @@ import {
   Coffee,
   Download,
   Target,
+  Leaf,
+  Settings,
+  ChartNoAxesCombined,
+  Sunrise,
+  MoonStar,
+  Headset,
+  ListTodo,
 } from 'lucide-vue-next';
 import { useTasks } from '../stores/tasks';
+import { useHabits } from '../stores/habits';
 import { useClock } from '../composables/useClock';
-import { dateKey, addDays } from '../utils/dates';
-import { recommend, rank } from '../utils/priority';
+import { dateKey } from '../utils/dates';
+import { rank } from '../utils/priority';
 import type { Task } from '../types';
+import type { Habit } from '../types/habits';
+
 import TaskRow from '../components/TaskRow.vue';
 import TaskEditor from '../components/TaskEditor.vue';
+import HabitEditor from '../components/HabitEditor.vue';
+
+import PerformanceView from './PerformanceView.vue';
+import { usePerformanceHistory } from '../stores/performanceHistory';
+import ActivitySuggestions from '../components/ActivitySuggestions.vue';
+import HabitsView from './HabitsView.vue';
+import IemaPanel from '../components/IemaPanel.vue';
+import PlatformsPanel from '../components/PlatformsPanel.vue';
+import { integrationTasksForDay } from '../utils/integrationTasks';
+
+import { dayGreeting } from '../utils/uiCopy';
+import PlanTomorrow from './PlanTomorrow.vue';
+import RoutineToday from './RoutineToday.vue';
+import AssistantSettings from '../components/AssistantSettings.vue';
+import RoutineSettings from '../components/RoutineSettings.vue';
+import { useRoutine } from '../stores/routine';
+import { reviewRequested } from '../services/reviewNotifications';
+const routine = useRoutine();
 const store = useTasks();
+const habits = useHabits();
+const performanceHistory = usePerformanceHistory();
+const habitEditor = ref(false);
+const editingHabit = ref<Habit | null>(null);
+const selectedHabitId = ref('');
 const now = useClock();
 const today = computed(() => dateKey(now.value));
+const greeting = computed(() => dayGreeting(now.value));
 const view = ref('Meu Dia');
+const routineDate = ref(today.value);
+const routineReturnView = ref('Meu Dia');
+const routinePage = 'Minha rotina hoje está diferente';
+function openRoutine(date = today.value) {
+  routineDate.value = date;
+  routineReturnView.value = view.value;
+  navigate(routinePage);
+}
+watch(
+  reviewRequested,
+  (requested) => {
+    if (requested) {
+      view.value = 'Planejar amanhã';
+      reviewRequested.value = false;
+    }
+  },
+  { immediate: true },
+);
+type TaskTab = 'all' | 'upcoming' | 'undated' | 'done';
+const taskTab = ref<TaskTab>('all');
+const taskTabs = [
+  {
+    id: 'all',
+    label: 'Todas',
+    icon: ListTodo,
+    emptyTitle: 'Um pequeno passo já é um começo.',
+    emptyMessage: 'Adicione sua primeira tarefa quando fizer sentido para você.',
+  },
+  {
+    id: 'upcoming',
+    label: 'Próximas',
+    icon: CalendarDays,
+    emptyTitle: 'Nada agendado por aqui.',
+    emptyMessage: 'Tarefas em aberto com planejamento ou vencimento futuro aparecem aqui.',
+  },
+  {
+    id: 'undated',
+    label: 'Sem data',
+    icon: CalendarOff,
+    emptyTitle: 'Nenhuma tarefa em aberto sem vencimento.',
+    emptyMessage: 'Uma tarefa pode ter um dia planejado e continuar sem prazo de entrega.',
+  },
+  {
+    id: 'done',
+    label: 'Concluídas',
+    icon: CircleCheck,
+    emptyTitle: 'As próximas conquistas aparecem aqui.',
+    emptyMessage: 'Cada tarefa concluída ganha um lugar nesta lista.',
+  },
+] as const;
+const currentTaskTab = computed(() => taskTabs.find((tab) => tab.id === taskTab.value)!);
+const showStatusFilter = computed(() => view.value === 'Tarefas' && taskTab.value === 'all');
 const search = ref('');
 const filter = ref('');
 const statusFilter = ref('');
 const sort = ref('smart');
 const minutes = ref(30);
-const alternatives = ref(false);
 const editor = ref(false);
 const editing = ref<Task | null>(null);
 const mobile = ref(false);
@@ -63,51 +145,40 @@ watch(
 );
 const nav = [
   { name: 'Meu Dia', icon: Sun },
-  { name: 'Todas as Tarefas', icon: Layers },
-  { name: 'Próximas', icon: CalendarDays },
-  { name: 'Sem Data', icon: CalendarOff },
-  { name: 'Concluídas', icon: CircleCheck },
+  { name: 'Tarefas', icon: ListTodo },
   { name: 'Categorias', icon: Shapes },
+  { name: 'Hábitos', icon: Leaf },
+  { name: 'Chamados IEMA', icon: Headset },
+  { name: 'Desempenho', icon: ChartNoAxesCombined },
+  { name: 'Configurações', icon: Settings },
 ];
 const pending = computed(() =>
   store.data.tasks.filter((t) => t.status === 'pending' || t.status === 'active'),
 );
-const doneToday = computed(() =>
-  store.data.tasks.filter(
-    (t) => t.status === 'done' && t.completedAt && dateKey(new Date(t.completedAt)) === today.value,
-  ),
-);
-const weekStart = computed(() => addDays(today.value, -((now.value.getDay() + 6) % 7)));
-const doneWeek = computed(() =>
-  store.data.tasks.filter(
-    (t) =>
-      t.status === 'done' && t.completedAt && dateKey(new Date(t.completedAt)) >= weekStart.value,
-  ),
-);
 const daily = computed(() =>
-  pending.value.filter((t) => t.plannedDate === today.value || t.dueDate === today.value),
-);
-const overdue = computed(() => pending.value.filter((t) => t.dueDate && t.dueDate < today.value));
-const suggestions = computed(() =>
-  recommend(store.data.tasks, Math.max(1, Number(minutes.value) || 1), now.value),
-);
-const progress = computed(() =>
-  Math.round((doneToday.value.length / (daily.value.length + doneToday.value.length || 1)) * 100),
+  pending.value
+    .filter(
+      (t) => !t.integrationName && (t.plannedDate === today.value || t.dueDate === today.value),
+    )
+    .concat(integrationTasksForDay(store.data.tasks, now.value, store.data.integrationDailyLimit)),
 );
 const visible = computed(() => {
-  let tasks =
-    view.value === 'Concluídas'
-      ? store.data.tasks.filter((t) => t.status === 'done')
-      : view.value === 'Todas as Tarefas'
-        ? store.data.tasks
-        : pending.value;
-  if (view.value === 'Meu Dia') tasks = daily.value;
-  if (view.value === 'Próximas') tasks = tasks.filter((t) => t.dueDate > today.value);
-  if (view.value === 'Sem Data') tasks = tasks.filter((t) => !t.dueDate);
+  let tasks = view.value === 'Meu Dia' ? daily.value : store.data.tasks;
+  if (view.value === 'Tarefas') {
+    if (taskTab.value === 'done') tasks = tasks.filter((t) => t.status === 'done');
+    if (taskTab.value === 'upcoming')
+      tasks = tasks.filter(
+        (t) =>
+          ['pending', 'active'].includes(t.status) &&
+          (t.plannedDate > today.value || t.dueDate > today.value),
+      );
+    if (taskTab.value === 'undated')
+      tasks = tasks.filter((t) => ['pending', 'active'].includes(t.status) && !t.dueDate);
+  }
   tasks = tasks.filter(
     (t) =>
       (!filter.value || t.categoryId === filter.value) &&
-      (!statusFilter.value || t.status === statusFilter.value) &&
+      (!showStatusFilter.value || !statusFilter.value || t.status === statusFilter.value) &&
       (t.title + ' ' + t.description)
         .toLocaleLowerCase()
         .includes(search.value.toLocaleLowerCase()),
@@ -129,15 +200,44 @@ function edit(task: Task | null = null) {
   editing.value = task ? (JSON.parse(JSON.stringify(task)) as Task) : null;
   editor.value = true;
 }
+function editHabit(habit: Habit | null = null) {
+  editingHabit.value = habit ? (JSON.parse(JSON.stringify(habit)) as Habit) : null;
+  habitEditor.value = true;
+}
 function navigate(name: string) {
-  view.value = name;
+  // This app has no URL router. Keep previous internal view names compatible.
+  const legacyTaskViews: Record<string, TaskTab> = {
+    'Todas as Tarefas': 'all',
+    Próximas: 'upcoming',
+    'Sem Data': 'undated',
+    'Sem data': 'undated',
+    Concluídas: 'done',
+  };
+  const tab = Object.hasOwn(legacyTaskViews, name) ? legacyTaskViews[name] : undefined;
+  view.value = tab ? 'Tarefas' : name;
+  if (tab) taskTab.value = tab;
   filter.value = '';
   statusFilter.value = '';
   search.value = '';
   mobile.value = false;
 }
+function selectTaskTab(tab: TaskTab) {
+  taskTab.value = tab;
+}
+function onTaskTabKey(event: KeyboardEvent, index: number) {
+  let target = index;
+  if (event.key === 'ArrowRight') target = (index + 1) % taskTabs.length;
+  else if (event.key === 'ArrowLeft') target = (index + taskTabs.length - 1) % taskTabs.length;
+  else if (event.key === 'Home') target = 0;
+  else if (event.key === 'End') target = taskTabs.length - 1;
+  else return;
+  event.preventDefault();
+  const tab = taskTabs[target]!;
+  selectTaskTab(tab.id);
+  void nextTick(() => document.getElementById(`task-tab-${tab.id}`)?.focus());
+}
 const categoryName = ref('');
-const categoryColor = ref('#7664d8');
+const categoryColor = ref('#356fb0');
 const categoryEditing = ref('');
 function saveCategory() {
   const name = categoryName.value.trim();
@@ -152,9 +252,19 @@ function saveCategory() {
   notify('Categoria salva');
 }
 function exportData() {
-  const raw = store.blocked
-    ? localStorage.getItem('focus.v1')
-    : JSON.stringify(store.data, null, 2);
+  const raw = JSON.stringify(
+    {
+      version: 2,
+      routine: routine.blocked ? localStorage.getItem('focus.routine.v1') : routine.data,
+      tasks: store.blocked ? localStorage.getItem('focus.v1') : store.data,
+      habits: habits.blocked ? localStorage.getItem('focus.habits.v1') : habits.data,
+      performanceHistory: performanceHistory.blocked
+        ? localStorage.getItem('focus.performance.v1')
+        : { version: 1, snapshots: performanceHistory.snapshots },
+    },
+    null,
+    2,
+  );
   const url = URL.createObjectURL(new Blob([raw ?? ''], { type: 'application/json' }));
   const a = document.createElement('a');
   a.href = url;
@@ -164,29 +274,30 @@ function exportData() {
 }
 </script>
 <template>
-  <div class="app-shell">
+  <div class="app-shell" :class="{ 'home-view': view === 'Meu Dia' }">
     <aside class="sidebar" :class="{ open: mobile }">
       <a class="brand" href="#" @click.prevent="navigate('Meu Dia')"
         ><span class="brand-mark"><Target :size="25" /></span>focus<span class="brand-dot"
           >.</span
         ></a
       >
-      <span class="workspace-label">SEU ESPAÇO PESSOAL</span>
-      <nav>
+      <span class="workspace-label">UM ESPAÇO PARA O SEU DIA</span>
+      <nav aria-label="Navegação principal">
         <button
           v-for="item in nav"
           :key="item.name"
           :class="{ selected: view === item.name }"
+          :aria-current="view === item.name ? 'page' : undefined"
           @click="navigate(item.name)"
         >
-          <component :is="item.icon" :size="19" />{{ item.name
+          <span class="nav-icon"
+            ><component :is="item.icon" :size="18" :stroke-width="1.7" aria-hidden="true" /></span
+          >{{ item.name
           }}<span v-if="item.name === 'Meu Dia'" class="nav-count">{{ daily.length }}</span
-          ><span v-if="item.name === 'Todas as Tarefas'" class="subtle-count">{{
-            pending.length
-          }}</span>
+          ><span v-if="item.name === 'Tarefas'" class="subtle-count">{{ pending.length }}</span>
         </button>
       </nav>
-      <div class="sidebar-categories">
+      <div v-if="view !== 'Meu Dia'" class="sidebar-categories">
         <div class="side-heading">
           CATEGORIAS<button aria-label="Gerenciar categorias" @click="navigate('Categorias')">
             <Plus :size="15" />
@@ -206,9 +317,9 @@ function exportData() {
         </button>
       </div>
       <div class="sidebar-bottom">
-        <div class="gentle-note">
+        <div class="gentle-note" :class="{ 'gentle-note-quiet': view === 'Meu Dia' }">
           <Coffee :size="20" /><strong>Um passo de cada vez.</strong>
-          <p>Você não precisa fazer tudo hoje.</p>
+          <p v-if="view !== 'Meu Dia'">Você não precisa fazer tudo hoje.</p>
         </div>
         <button class="theme-toggle" @click="dark = !dark">
           <component :is="dark ? Sun : Moon" :size="17" />{{ dark ? 'Modo claro' : 'Modo escuro'
@@ -223,20 +334,34 @@ function exportData() {
     <button v-if="mobile" class="mobile-shade" aria-label="Fechar menu" @click="mobile = false" />
     <div class="main-shell">
       <header class="topbar">
-        <button class="mobile-menu icon-button" aria-label="Abrir menu" @click="mobile = true">
+        <button
+          class="mobile-menu icon-button"
+          aria-label="Abrir menu"
+          :aria-expanded="mobile"
+          @click="mobile = true"
+        >
           <Menu :size="22" /></button
         ><span
           >Meu espaço <ChevronRight :size="14" /> <strong>{{ view }}</strong></span
         >
         <div>
-          <span class="local-indicator" :class="{ late: !!store.error }"
+          <span v-if="view !== 'Meu Dia'" class="local-indicator" :class="{ late: !!store.error }"
             ><i />{{ store.error ? 'Verifique o armazenamento' : 'Seu ritmo, seu espaço' }}</span
-          ><button class="top-add" @click="edit()"><Plus :size="18" />Nova tarefa</button>
+          ><button
+            v-if="!['Configurações', 'Desempenho', routinePage].includes(view)"
+            class="top-add"
+            @click="view === 'Hábitos' ? editHabit() : edit()"
+          >
+            <Plus :size="18" />{{ view === 'Hábitos' ? 'Novo hábito' : 'Nova tarefa' }}
+          </button>
         </div>
       </header>
       <main>
         <div v-if="store.error" role="alert" class="error-banner">
           {{ store.error }} <button @click="exportData">Exportar dados</button>
+        </div>
+        <div v-if="habits.error" role="alert" class="error-banner">
+          {{ habits.error }} <button @click="exportData">Exportar dados</button>
         </div>
         <div class="page-heading">
           <div>
@@ -245,156 +370,109 @@ function exportData() {
                 now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
               }}
             </p>
-            <h1 v-if="view === 'Meu Dia'">
-              {{
-                now.getHours() < 12 ? 'Bom dia' : now.getHours() < 18 ? 'Boa tarde' : 'Boa noite'
-              }}
-              <span class="sun-emoji">☀</span>
+            <h1 v-if="view === 'Meu Dia'" class="greeting-title">
+              <span class="greeting-icon"
+                ><component
+                  :is="
+                    greeting.period === 'morning'
+                      ? Sunrise
+                      : greeting.period === 'afternoon'
+                        ? Sun
+                        : MoonStar
+                  "
+                  :size="23"
+                  :stroke-width="1.6"
+                  aria-hidden="true"
+              /></span>
+              <span>{{ greeting.title }}</span>
             </h1>
-            <h1 v-else>{{ view }}</h1>
-            <p>
-              {{
-                view === 'Meu Dia'
-                  ? 'Menos ruído. Mais clareza para o que importa.'
-                  : 'Um lugar para organizar seus próximos passos.'
-              }}
-            </p>
+            <h1 v-else>{{ view === 'Desempenho' ? 'Seu desempenho' : view }}</h1>
+            <p v-if="view === 'Desempenho'">Acompanhe seus avanços no seu ritmo</p>
+            <p v-else-if="view === 'Configurações'">Deixe o Focus do seu jeito.</p>
+            <p v-else-if="view === 'Tarefas'">Uma lista para organizar seus próximos passos.</p>
           </div>
-          <button class="primary" @click="edit()"><Plus :size="17" /> Nova tarefa</button>
+          <button
+            v-if="!['Configurações', 'Desempenho', routinePage].includes(view)"
+            class="primary"
+            @click="view === 'Hábitos' ? editHabit() : edit()"
+          >
+            <Plus :size="17" />{{ view === 'Hábitos' ? 'Novo hábito' : 'Nova tarefa' }}
+          </button>
         </div>
         <template v-if="view === 'Meu Dia'">
-          <section class="stats">
-            <article>
-              <span class="stat-icon violet"><Layers :size="19" /></span>
-              <div>
-                <span>Pendentes</span
-                ><strong>{{ pending.length }}<small>tarefas no seu radar</small></strong>
-              </div>
-            </article>
-            <article>
-              <span class="stat-icon green"><CircleCheck :size="19" /></span>
-              <div>
-                <span>Concluídas hoje</span
-                ><strong>{{ doneToday.length }}<small>cada passo conta</small></strong>
-              </div>
-            </article>
-            <article>
-              <span class="stat-icon orange"><ClockIcon /></span>
-              <div>
-                <span>Tempo realizado hoje</span
-                ><strong
-                  >{{ doneToday.reduce((s, t) => s + t.duration, 0)
-                  }}<small>minutos estimados</small></strong
-                >
-              </div>
-            </article>
-            <article class="progress-stat">
-              <div>
-                <span>Seu progresso de hoje</span><strong>{{ progress }}<small>%</small></strong>
-                <div class="progress-track"><i :style="{ width: progress + '%' }" /></div>
-              </div>
-              <span class="progress-flower">✳</span>
-            </article>
-          </section>
-          <section class="recommendation">
-            <div class="recommendation-top">
-              <span class="recommend-label"><Sparkles :size="16" /> UM POUCO DE CLAREZA</span
-              ><span class="rule-label">Feito para o seu momento</span>
-            </div>
-            <div class="recommend-layout">
-              <div class="recommend-intro">
-                <h2>O que faço agora?</h2>
-                <p>
-                  Escolha seu tempo. A gente ajuda<br class="desktop-break" />
-                  a encontrar o próximo passo.
-                </p>
-                <div class="time-options">
-                  <button
-                    v-for="n in [15, 30, 60, 120]"
-                    :key="n"
-                    :class="{ chosen: minutes === n }"
-                    @click="minutes = n"
-                  >
-                    {{ n < 60 ? n + ' min' : n / 60 + ' h' }}</button
-                  ><label class="custom-time"
-                    ><input
-                      v-model.number="minutes"
-                      type="number"
-                      min="1"
-                      max="10080"
-                      aria-label="Tempo personalizado em minutos"
-                    />
-                    min</label
-                  >
-                </div>
-              </div>
-              <div v-if="suggestions[0]" class="suggested-task">
-                <span class="suggested-tag"
-                  ><span /> NOSSA SUGESTÃO
-                  <span class="duration">{{ suggestions[0].task.duration }} min</span></span
-                >
-                <h3>{{ suggestions[0].task.title }}</h3>
-                <p>{{ suggestions[0].reason }}</p>
-                <div class="suggestion-actions">
-                  <button
-                    v-if="suggestions[0].task.status !== 'active'"
-                    class="primary"
-                    @click="
-                      store.status(suggestions[0]!.task, 'active');
-                      notify('Tarefa em andamento. Um passo de cada vez.');
-                    "
-                  >
-                    <Play :size="14" />Começar tarefa
-                  </button>
-                  <button
-                    v-else
-                    class="primary"
-                    @click="
-                      store.status(suggestions[0]!.task, 'done');
-                      notify('Tarefa concluída. Cada passo conta!');
-                    "
-                  >
-                    <Check :size="14" />Finalizar tarefa
-                  </button>
-                  <span
-                    v-if="suggestions[0].task.status === 'active'"
-                    class="task-active-badge"
-                    role="status"
-                  >
-                    <span aria-hidden="true" />Em andamento
-                  </span>
-                  <button class="text-button" @click="alternatives = !alternatives">
-                    {{ alternatives ? 'Ocultar' : 'Ver alternativas' }}<ChevronRight :size="15" />
-                  </button>
-                </div>
-              </div>
-              <div v-else class="suggested-task empty-recommend">
-                <Sparkles :size="25" />
-                <h3>
-                  {{
-                    pending.length ? 'Um pouco mais de tempo?' : 'Abra espaço para o próximo passo.'
-                  }}
-                </h3>
-                <p>
-                  {{
-                    pending.length
-                      ? 'Nenhuma tarefa cabe nesse intervalo. Ajuste o tempo ou aproveite uma pausa.'
-                      : 'Adicione uma tarefa e receba uma sugestão pensada para o seu momento.'
-                  }}
-                </p>
-                <button class="text-button" @click="edit()">
-                  Adicionar tarefa <Plus :size="15" />
-                </button>
-              </div>
-            </div>
-            <div v-if="alternatives && suggestions.length > 1" class="alternatives">
-              <button v-for="s in suggestions.slice(1)" :key="s.task.id" @click="edit(s.task)">
-                {{ s.task.title }}<span>{{ s.task.duration }} min · {{ s.reason }}</span>
-              </button>
-            </div>
-          </section>
+          <button class="text-button plan-tomorrow-link" @click="navigate('Planejar amanhã')">
+            <CalendarDays :size="15" />Planejar amanhã
+          </button>
+          <button class="text-button routine-today" @click="openRoutine()">
+            <CalendarDays :size="15" aria-hidden="true" />Minha rotina hoje está diferente
+          </button>
+          <ActivitySuggestions
+            v-model:minutes="minutes"
+            compact
+            :now="now"
+            @edit-task="edit"
+            @edit-habit="editHabit"
+            @changed="notify"
+          />
+
+          <button class="text-button" @click="navigate('Tarefas')">Ver minhas tarefas</button>
         </template>
-        <section v-if="view === 'Categorias'" class="category-panel">
+        <RoutineToday
+          v-if="view === routinePage"
+          :date="routineDate"
+          @back="navigate(routineReturnView)"
+        />
+        <PlanTomorrow
+          v-if="view === 'Planejar amanhã'"
+          :now="now"
+          @changed="notify"
+          @edit-task="edit"
+          @adjust-routine="openRoutine"
+        />
+        <PerformanceView v-if="view === 'Desempenho'" :now="now" />
+        <section
+          v-if="view === 'Configurações'"
+          class="settings-sections"
+          aria-label="Configurações"
+        >
+          <details>
+            <summary>Minha Rotina</summary>
+            <RoutineSettings />
+            <button class="text-button" @click="openRoutine()">
+              Minha rotina hoje está diferente
+            </button>
+          </details>
+          <details open>
+            <summary>Integrações e planilha Excel</summary>
+            <PlatformsPanel mode="list" />
+          </details>
+          <details>
+            <summary>Conexão IEMA</summary>
+            <IemaPanel mode="settings" />
+          </details>
+          <details>
+            <summary>Preferências de sugestões</summary>
+            <ActivitySuggestions v-model:minutes="minutes" :now="now" settings-only />
+          </details>
+          <details>
+            <summary>Assistente e revisão noturna</summary>
+            <AssistantSettings />
+            <button class="text-button" @click="navigate('Planejar amanhã')">
+              Abrir revisão de amanhã
+            </button>
+          </details>
+        </section>
+        <IemaPanel v-else-if="view === 'Chamados IEMA'" mode="tickets" />
+
+        <HabitsView
+          v-else-if="view === 'Hábitos'"
+          :today="today"
+          :initial-id="selectedHabitId"
+          @create="editHabit()"
+          @edit="editHabit"
+          @changed="notify"
+        />
+        <section v-else-if="view === 'Categorias'" class="category-panel">
           <div class="section-heading">
             <h2>Áreas da sua vida</h2>
             <span>{{ store.data.categories.length }} categorias</span>
@@ -454,38 +532,47 @@ function exportData() {
             </article>
           </div>
         </section>
-        <template v-else>
-          <section v-if="view === 'Meu Dia' && overdue.length" class="overdue-panel">
+        <template v-else-if="view === 'Tarefas'">
+          <div class="task-tabs" role="tablist" aria-label="Visualizações de tarefas">
+            <button
+              v-for="(tab, index) in taskTabs"
+              :id="`task-tab-${tab.id}`"
+              :key="tab.id"
+              type="button"
+              role="tab"
+              :aria-selected="taskTab === tab.id"
+              aria-controls="task-tab-panel"
+              :tabindex="taskTab === tab.id ? 0 : -1"
+              @click="selectTaskTab(tab.id)"
+              @keydown="onTaskTabKey($event, index)"
+            >
+              <component :is="tab.icon" :size="15" :stroke-width="1.7" aria-hidden="true" />{{
+                tab.label
+              }}
+            </button>
+          </div>
+          <section
+            id="task-tab-panel"
+            class="task-section"
+            role="tabpanel"
+            :aria-labelledby="`task-tab-${taskTab}`"
+            tabindex="0"
+          >
             <div class="section-heading">
               <h2>
-                <span class="overdue-dot" /> Merecem atenção
-                <span class="count-pill">{{ overdue.length }}</span>
-              </h2>
-              <span>Retome no seu tempo</span>
-            </div>
-            <TaskRow
-              v-for="task in overdue"
-              :key="task.id"
-              :task="task"
-              :today="today"
-              @edit="edit"
-              @completed="notify('Tarefa concluída. Cada passo conta!')"
-            />
-          </section>
-          <section class="task-section">
-            <div class="section-heading">
-              <h2>
-                {{
-                  view === 'Meu Dia'
-                    ? 'Planejado para hoje'
-                    : view === 'Todas as Tarefas'
-                      ? 'Todas as tarefas'
-                      : view
-                }}
+                {{ currentTaskTab.label }}
                 <span class="count-pill">{{ visible.length }}</span>
               </h2>
-              <span v-if="view === 'Meu Dia'">Vencimento e planejamento, juntos aqui</span>
             </div>
+            <p v-if="view === 'Tarefas' && taskTab === 'undated'" class="task-tab-description">
+              Sem vencimento, mesmo que você já tenha escolhido um dia para fazer.
+            </p>
+            <p
+              v-else-if="view === 'Tarefas' && taskTab === 'upcoming'"
+              class="task-tab-description"
+            >
+              Em aberto, com planejamento ou vencimento depois de hoje.
+            </p>
             <div class="list-toolbar">
               <label class="search-box"
                 ><Search :size="16" /><input
@@ -497,11 +584,7 @@ function exportData() {
                 <option v-for="c in store.data.categories" :key="c.id" :value="c.id">
                   {{ c.name }}
                 </option></select
-              ><select
-                v-if="view === 'Todas as Tarefas'"
-                v-model="statusFilter"
-                aria-label="Filtrar status"
-              >
+              ><select v-if="showStatusFilter" v-model="statusFilter" aria-label="Filtrar status">
                 <option value="">Todos os status</option>
                 <option value="pending">Pendentes</option>
                 <option value="active">Em andamento</option>
@@ -524,24 +607,22 @@ function exportData() {
               />
               <div v-if="!visible.length" class="empty-state">
                 <span class="empty-icon"
-                  ><component :is="view === 'Concluídas' ? CircleCheck : Sun" :size="25"
+                  ><component
+                    :is="view === 'Tarefas' && taskTab === 'done' ? CircleCheck : Sun"
+                    :size="25"
                 /></span>
                 <h3>
                   {{
-                    search || filter
+                    search || filter || (showStatusFilter && statusFilter)
                       ? 'Nenhuma tarefa encontrada'
-                      : view === 'Meu Dia'
-                        ? 'Um dia com espaço para o que importa.'
-                        : 'Tudo começa com um pequeno passo.'
+                      : currentTaskTab.emptyTitle
                   }}
                 </h3>
                 <p>
                   {{
-                    search || filter
+                    search || filter || (showStatusFilter && statusFilter)
                       ? 'Experimente ajustar sua busca ou os filtros.'
-                      : view === 'Meu Dia'
-                        ? 'Crie uma tarefa ou planeje uma existente para hoje.'
-                        : 'Suas tarefas aparecerão aqui. Adicione a primeira quando quiser.'
+                      : currentTaskTab.emptyMessage
                   }}
                 </p>
               </div>
@@ -551,20 +632,7 @@ function exportData() {
             </div>
           </section>
         </template>
-        <section v-if="view === 'Meu Dia'" class="week-summary">
-          <div>
-            <span class="week-icon"><CircleCheck :size="20" /></span>
-            <div>
-              <h3>Sua semana, até aqui</h3>
-              <p>
-                {{ doneWeek.length }} tarefas concluídas ·
-                {{ doneWeek.reduce((s, t) => s + t.duration, 0) }} minutos estimados
-              </p>
-            </div>
-          </div>
-          <span>Progresso também é respeitar seu ritmo. <span>🌿</span></span>
-        </section>
-        <footer class="page-footer">
+        <footer v-if="view !== 'Meu Dia'" class="page-footer">
           <span class="mini-brand">focus.</span> Clareza para agir. Espaço para viver.<button
             @click="exportData"
           >
@@ -576,10 +644,27 @@ function exportData() {
     <TaskEditor
       v-if="editor"
       :task="editing"
+      @deleted="
+        editor = false;
+        notify('Tarefa excluída.');
+      "
       @close="editor = false"
       @saved="
         editor = false;
         notify('Tarefa salva com sucesso');
+      "
+    />
+    <HabitEditor
+      v-if="habitEditor"
+      :habit="editingHabit"
+      @deleted="
+        habitEditor = false;
+        notify('Hábito e histórico excluídos.');
+      "
+      @close="habitEditor = false"
+      @saved="
+        habitEditor = false;
+        notify('Hábito salvo com sucesso');
       "
     />
     <Transition name="toast"
@@ -589,8 +674,3 @@ function exportData() {
     ></Transition>
   </div>
 </template>
-
-<script lang="ts">
-import { Clock3 } from 'lucide-vue-next';
-export default { components: { ClockIcon: Clock3 } };
-</script>

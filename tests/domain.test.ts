@@ -72,6 +72,38 @@ describe('priorização explicável', () => {
   });
 });
 describe('recorrência e histórico', () => {
+  it.each(['', '2026-10-15'])(
+    'só recomenda a próxima ocorrência no dia certo (vencimento: %s)',
+    (dueDate) => {
+      const original = task({ duration: 10, dueDate, recurrence: { kind: 'daily', days: [] } });
+      const next = nextOccurrence(original, now)!;
+      const completed = {
+        ...original,
+        status: 'done' as const,
+        completedAt: now.toISOString(),
+        nextId: next.id,
+      };
+      const tasks = [completed, next];
+      expect(recommend(tasks, 15, now)).toEqual([]);
+      expect(recommend(tasks, 120, now)).toEqual([]);
+      expect(recommend(tasks, 15, new Date('2026-10-16T00:01:00')).map((r) => r.task.id)).toEqual([
+        next.id,
+      ]);
+    },
+  );
+  it('respeita planejamento futuro sem bloquear tarefas comuns só por vencerem no futuro', () => {
+    const planned = task({ id: 'planned', plannedDate: '2026-10-16' });
+    const deadlineOnly = task({ id: 'deadline', dueDate: '2026-10-20' });
+    const noDate = task({ id: 'no-date' });
+    const futureRecurring = task({
+      id: 'future',
+      dueDate: '2026-10-16',
+      recurrence: { kind: 'daily', days: [] },
+    });
+    expect(
+      recommend([planned, deadlineOnly, noDate, futureRecurring], 30, now).map((r) => r.task.id),
+    ).toEqual(['deadline', 'no-date']);
+  });
   it('mantém a ocorrência original e gera a próxima diária', () => {
     const original = task({ dueDate: '2026-10-15', recurrence: { kind: 'daily', days: [] } });
     const next = nextOccurrence(original, now)!;

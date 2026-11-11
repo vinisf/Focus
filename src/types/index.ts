@@ -11,6 +11,11 @@ export interface Task {
   categoryId: string;
   dueDate: string;
   time: string;
+  scheduledTime?: string;
+  deadlineTime?: string;
+  mandatory?: boolean;
+  blocked?: boolean;
+  nextAction?: string;
   plannedDate: string;
   priority: Priority;
   importance: 'low' | 'medium' | 'high';
@@ -20,6 +25,8 @@ export interface Task {
   completedAt: string | null;
   recurrence: Recurrence | null;
   nextId?: string;
+  integrationName?: string;
+  integrationDeferredOn?: string;
 }
 export interface Category {
   id: string;
@@ -30,4 +37,5 @@ export interface Data {
   version: 1;
   tasks: Task[];
   categories: Category[];
+  integrationDailyLimit?: 1 | 2;
 }

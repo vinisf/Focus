@@ -1,3 +1,7 @@
 node_modules/
 dist/
 *.local
+apk/
+
+# Personal credentials
+token.txt

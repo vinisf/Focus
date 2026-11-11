@@ -16,6 +16,13 @@ export function validTask(t: Task): boolean {
     validDate(t.plannedDate) &&
     typeof t.time === 'string' &&
     (!t.time || /^([01]\d|2[0-3]):[0-5]\d$/.test(t.time)) &&
+    [t.scheduledTime, t.deadlineTime].every(
+      (v) => v === undefined || v === '' || /^([01]\d|2[0-3]):[0-5]\d$/.test(v),
+    ) &&
+    (t.mandatory === undefined || typeof t.mandatory === 'boolean') &&
+    (t.mandatory !== true || (!!t.scheduledTime && !!(t.plannedDate || t.dueDate))) &&
+    (t.blocked === undefined || typeof t.blocked === 'boolean') &&
+    (t.nextAction === undefined || typeof t.nextAction === 'string') &&
     ['low', 'medium', 'high', 'urgent'].includes(t.priority) &&
     ['low', 'medium', 'high'].includes(t.importance) &&
     ['pending', 'active', 'done', 'cancelled'].includes(t.status) &&
@@ -26,6 +33,9 @@ export function validTask(t: Task): boolean {
     (t.completedAt === null ||
       (typeof t.completedAt === 'string' && !isNaN(Date.parse(t.completedAt)))) &&
     (t.nextId === undefined || typeof t.nextId === 'string') &&
+    (t.integrationName === undefined ||
+      (typeof t.integrationName === 'string' && !!t.integrationName.trim())) &&
+    (t.integrationDeferredOn === undefined || validDate(t.integrationDeferredOn)) &&
     (t.recurrence === null ||
       (['daily', 'weekly', 'custom'].includes(t.recurrence?.kind) &&
         Array.isArray(t.recurrence.days) &&
@@ -45,6 +55,7 @@ export class LocalRepository implements Repository {
     const d = JSON.parse(raw) as Data;
     if (
       d.version !== 1 ||
+      (d.integrationDailyLimit !== undefined && ![1, 2].includes(d.integrationDailyLimit)) ||
       !Array.isArray(d.tasks) ||
       !d.tasks.every(validTask) ||
       !Array.isArray(d.categories) ||

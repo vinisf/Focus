@@ -1,7 +1,7 @@
 import vue from 'eslint-plugin-vue';
 import ts from 'typescript-eslint';
 export default ts.config(
-  { ignores: ['dist/**', 'node_modules/**'] },
+  { ignores: ['dist/**', 'node_modules/**', 'android/**'] },
   ...ts.configs.recommended,
   ...vue.configs['flat/recommended'],
   {

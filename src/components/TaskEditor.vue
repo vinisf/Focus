@@ -1,12 +1,19 @@
 <script setup lang="ts">
-import { reactive, ref, onMounted, onUnmounted } from 'vue';
+import { reactive, ref } from 'vue';
+import { useDialogFocus } from '../composables/useDialogFocus';
 import { X, ChevronDown } from 'lucide-vue-next';
 import type { Task } from '../types';
 import { useTasks } from '../stores/tasks';
+import DeleteActivity from './DeleteActivity.vue';
 const props = defineProps<{ task: Task | null }>();
-const emit = defineEmits<{ close: []; saved: [] }>();
+const emit = defineEmits<{ close: []; saved: []; deleted: [] }>();
 const store = useTasks();
 const input = ref<HTMLInputElement>();
+const deleteError = ref('');
+function remove() {
+  if (props.task && store.remove(props.task.id)) emit('deleted');
+  else deleteError.value = store.error || 'Não foi possível excluir a tarefa.';
+}
 const advanced = ref(!!props.task);
 const repeat = ref(props.task?.recurrence?.kind ?? '');
 const days = ref(props.task?.recurrence?.days ?? [1, 2, 3, 4, 5]);
@@ -30,33 +37,12 @@ const form = reactive<Task>(
         recurrence: null,
       },
 );
-const previousFocus = document.activeElement as HTMLElement | null;
-const previousOverflow = document.body.style.overflow;
-onMounted(() => {
-  input.value?.focus();
-  document.body.style.overflow = 'hidden';
-});
-onUnmounted(() => {
-  document.body.style.overflow = previousOverflow;
-  previousFocus?.focus();
-});
-function trapFocus(event: KeyboardEvent) {
-  const elements = Array.from(
-    (event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>(
-      'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled)',
-    ),
-  );
-  const first = elements[0],
-    last = elements.at(-1);
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault();
-    last?.focus();
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault();
-    first?.focus();
-  }
-}
+const { trapFocus } = useDialogFocus(input);
 function submit() {
+  if (form.mandatory && (!form.scheduledTime || !(form.plannedDate || form.dueDate))) {
+    deleteError.value = 'Informe o dia e o horário de início do compromisso obrigatório.';
+    return;
+  }
   if (
     !form.title.trim() ||
     !form.categoryId ||
@@ -129,6 +115,13 @@ function submit() {
         </button>
         <div v-if="advanced" class="advanced">
           <label>Descrição<textarea v-model="form.description" rows="3" /></label>
+          <label v-if="form.integrationName"
+            >Próxima ação<input v-model="form.nextAction" maxlength="240"
+          /></label>
+          <label class="planning-check"
+            ><input v-model="form.blocked" type="checkbox" />Aguardando uma dependência (fora das
+            sugestões)</label
+          >
           <div class="form-grid">
             <label
               >Estimativa (min)<input
@@ -143,7 +136,16 @@ function submit() {
                 <option value="medium">Média</option>
                 <option value="high">Alta</option>
               </select></label
-            ><label>Horário do vencimento<input v-model="form.time" type="time" /></label
+            ><label
+              >Horário limite<input
+                v-model="form.time"
+                type="time"
+                @input="form.deadlineTime = form.time" /></label
+            ><label
+              >Horário planejado de início<input v-model="form.scheduledTime" type="time" /></label
+            ><label class="planning-check"
+              ><input v-model="form.mandatory" type="checkbox" />Compromisso com horário
+              obrigatório</label
             ><label
               >Recorrência<select v-model="repeat">
                 <option value="">Não repetir</option>
@@ -163,6 +165,14 @@ function submit() {
             >
           </fieldset>
         </div>
+        <DeleteActivity
+          v-if="task"
+          label="Excluir tarefa"
+          :description="`Excluir “${task.title}”? Apenas esta tarefa será apagada; outras ocorrências já criadas serão mantidas.`"
+          :disabled="store.blocked"
+          @confirm="remove"
+        />
+        <p v-if="deleteError" role="alert" class="late">{{ deleteError }}</p>
         <footer>
           <button type="button" @click="emit('close')">Cancelar</button
           ><button data-last class="primary" :disabled="repeat === 'custom' && !days.length">

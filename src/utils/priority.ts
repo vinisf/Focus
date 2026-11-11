@@ -44,9 +44,21 @@ export function rank(task: Task, minutes: number, now = new Date(), w = defaultW
   ];
   return { task, score, reason: `Esta tarefa ${reasons.join(', ')}.` };
 }
+export function isAvailableToday(task: Task, now = new Date()): boolean {
+  const today = dateKey(now);
+  // Planning determines when to act; a deadline alone does not prevent early work.
+  if (task.plannedDate) return task.plannedDate <= today;
+  // Recurring activities without a planned date belong to their occurrence date.
+  return !task.recurrence || !task.dueDate || task.dueDate <= today;
+}
 export function recommend(tasks: Task[], minutes: number, now = new Date()) {
   return tasks
-    .filter((t) => (t.status === 'pending' || t.status === 'active') && t.duration <= minutes)
+    .filter(
+      (t) =>
+        (t.status === 'pending' || t.status === 'active') &&
+        t.duration <= minutes &&
+        isAvailableToday(t, now),
+    )
     .map((t) => rank(t, minutes, now))
     .sort((a, b) => b.score - a.score || a.task.id.localeCompare(b.task.id))
     .slice(0, 3);
