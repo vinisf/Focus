@@ -37,6 +37,9 @@ import TaskRow from '../components/TaskRow.vue';
 import TaskEditor from '../components/TaskEditor.vue';
 import HabitEditor from '../components/HabitEditor.vue';
 
+import GoalsView from './GoalsView.vue';
+import WeekView from './WeekView.vue';
+import BackupSettings from '../components/BackupSettings.vue';
 import PerformanceView from './PerformanceView.vue';
 import { usePerformanceHistory } from '../stores/performanceHistory';
 import ActivitySuggestions from '../components/ActivitySuggestions.vue';
@@ -145,6 +148,8 @@ watch(
 );
 const nav = [
   { name: 'Meu Dia', icon: Sun },
+  { name: 'Semana', icon: CalendarDays },
+  { name: 'Metas', icon: Target },
   { name: 'Tarefas', icon: ListTodo },
   { name: 'Categorias', icon: Shapes },
   { name: 'Hábitos', icon: Leaf },
@@ -348,7 +353,7 @@ function exportData() {
           <span v-if="view !== 'Meu Dia'" class="local-indicator" :class="{ late: !!store.error }"
             ><i />{{ store.error ? 'Verifique o armazenamento' : 'Seu ritmo, seu espaço' }}</span
           ><button
-            v-if="!['Configurações', 'Desempenho', routinePage].includes(view)"
+            v-if="!['Configurações', 'Desempenho', 'Semana', 'Metas', routinePage].includes(view)"
             class="top-add"
             @click="view === 'Hábitos' ? editHabit() : edit()"
           >
@@ -392,7 +397,7 @@ function exportData() {
             <p v-else-if="view === 'Tarefas'">Uma lista para organizar seus próximos passos.</p>
           </div>
           <button
-            v-if="!['Configurações', 'Desempenho', routinePage].includes(view)"
+            v-if="!['Configurações', 'Desempenho', 'Semana', 'Metas', routinePage].includes(view)"
             class="primary"
             @click="view === 'Hábitos' ? editHabit() : edit()"
           >
@@ -429,12 +434,18 @@ function exportData() {
           @edit-task="edit"
           @adjust-routine="openRoutine"
         />
+        <GoalsView v-if="view === 'Metas'" />
+        <WeekView v-if="view === 'Semana'" />
         <PerformanceView v-if="view === 'Desempenho'" :now="now" />
         <section
           v-if="view === 'Configurações'"
           class="settings-sections"
           aria-label="Configurações"
         >
+          <details>
+            <summary>Backup completo</summary>
+            <BackupSettings />
+          </details>
           <details>
             <summary>Minha Rotina</summary>
             <RoutineSettings />

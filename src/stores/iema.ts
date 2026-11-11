@@ -11,6 +11,29 @@ import {
 import { credentials, openIema } from '../services/integrations/iema/credentials';
 import { synchronize } from '../services/integrations/iema/IemaSyncService';
 const KEY = 'focus.integrations.iema.v1';
+export function validateIema(data: IemaData) {
+  if (
+    data.version !== 1 ||
+    typeof data.connectionId !== 'string' ||
+    typeof data.enabled !== 'boolean' ||
+    baseUrl(data.baseUrl) !== data.baseUrl ||
+    (data.lastSync !== null && !Number.isFinite(Date.parse(data.lastSync))) ||
+    !Array.isArray(data.tickets)
+  )
+    throw new Error();
+  const keys = new Set<string>();
+  for (const t of data.tickets) {
+    if (
+      normalize(t, data.connectionId, data.baseUrl).key !== t.key ||
+      keys.has(t.key) ||
+      typeof t.mine !== 'boolean' ||
+      typeof t.available !== 'boolean' ||
+      (t.estimate !== null && (!Number.isFinite(t.estimate) || t.estimate <= 0))
+    )
+      throw new Error();
+    keys.add(t.key);
+  }
+}
 export const useIema = defineStore('iema', () => {
   const data = ref<IemaData>({
     version: 1,
@@ -28,27 +51,7 @@ export const useIema = defineStore('iema', () => {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as IemaData;
-      if (
-        parsed.version !== 1 ||
-        typeof parsed.connectionId !== 'string' ||
-        typeof parsed.enabled !== 'boolean' ||
-        baseUrl(parsed.baseUrl) !== parsed.baseUrl ||
-        (parsed.lastSync !== null && !Number.isFinite(Date.parse(parsed.lastSync))) ||
-        !Array.isArray(parsed.tickets)
-      )
-        throw new Error();
-      const keys = new Set<string>();
-      for (const t of parsed.tickets) {
-        if (
-          normalize(t, parsed.connectionId, parsed.baseUrl).key !== t.key ||
-          keys.has(t.key) ||
-          typeof t.mine !== 'boolean' ||
-          typeof t.available !== 'boolean' ||
-          (t.estimate !== null && (!Number.isFinite(t.estimate) || t.estimate <= 0))
-        )
-          throw new Error();
-        keys.add(t.key);
-      }
+      validateIema(parsed);
       data.value = parsed;
     }
   } catch {

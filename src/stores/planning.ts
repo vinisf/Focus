@@ -3,6 +3,41 @@ import { defineStore } from 'pinia';
 import type { PlanningData, PlanningPreferences, WorkSession } from '../types/planning';
 import { workedMinutes } from '../utils/planning';
 const KEY = 'focus.planning.v1';
+export function validatePlanning(d: PlanningData) {
+  const p = d.preferences;
+  if (
+    d.version !== 1 ||
+    !p ||
+    !(
+      p.maxWorkMinutes === null ||
+      (Number.isFinite(p.maxWorkMinutes) && p.maxWorkMinutes >= 0 && p.maxWorkMinutes <= 1440)
+    ) ||
+    !['any', 'quick', 'deep'].includes(p.style) ||
+    !Array.isArray(p.excludedSources) ||
+    p.excludedSources.some((s) => !['task', 'habit', 'iema', 'platform', 'routine'].includes(s)) ||
+    !Array.isArray(p.categoryIds) ||
+    !Array.isArray(p.workCategoryIds) ||
+    [...p.categoryIds, ...p.workCategoryIds].some((s) => typeof s !== 'string') ||
+    !(p.restUntil === null || Number.isFinite(p.restUntil)) ||
+    !Array.isArray(d.sessions) ||
+    d.sessions.some(
+      (s) =>
+        !s ||
+        typeof s.id !== 'string' ||
+        typeof s.key !== 'string' ||
+        !['task', 'iema', 'platform'].includes(s.source) ||
+        !Number.isFinite(Date.parse(s.startedAt)) ||
+        !(
+          s.endedAt === null ||
+          (Number.isFinite(Date.parse(s.endedAt)) &&
+            Date.parse(s.endedAt) >= Date.parse(s.startedAt))
+        ),
+    ) ||
+    d.sessions.filter((s) => !s.endedAt).length > 1 ||
+    new Set(d.sessions.map((s) => s.id)).size !== d.sessions.length
+  )
+    throw new Error('invalid');
+}
 export const usePlanning = defineStore('planning', () => {
   const data = ref<PlanningData>({
     version: 1,
@@ -18,48 +53,11 @@ export const usePlanning = defineStore('planning', () => {
   });
   const blocked = ref(false);
   const error = ref('');
-  function validate(d: PlanningData) {
-    const p = d.preferences;
-    if (
-      d.version !== 1 ||
-      !p ||
-      !(
-        p.maxWorkMinutes === null ||
-        (Number.isFinite(p.maxWorkMinutes) && p.maxWorkMinutes >= 0 && p.maxWorkMinutes <= 1440)
-      ) ||
-      !['any', 'quick', 'deep'].includes(p.style) ||
-      !Array.isArray(p.excludedSources) ||
-      p.excludedSources.some(
-        (s) => !['task', 'habit', 'iema', 'platform', 'routine'].includes(s),
-      ) ||
-      !Array.isArray(p.categoryIds) ||
-      !Array.isArray(p.workCategoryIds) ||
-      [...p.categoryIds, ...p.workCategoryIds].some((s) => typeof s !== 'string') ||
-      !(p.restUntil === null || Number.isFinite(p.restUntil)) ||
-      !Array.isArray(d.sessions) ||
-      d.sessions.some(
-        (s) =>
-          !s ||
-          typeof s.id !== 'string' ||
-          typeof s.key !== 'string' ||
-          !['task', 'iema', 'platform'].includes(s.source) ||
-          !Number.isFinite(Date.parse(s.startedAt)) ||
-          !(
-            s.endedAt === null ||
-            (Number.isFinite(Date.parse(s.endedAt)) &&
-              Date.parse(s.endedAt) >= Date.parse(s.startedAt))
-          ),
-      ) ||
-      d.sessions.filter((s) => !s.endedAt).length > 1 ||
-      new Set(d.sessions.map((s) => s.id)).size !== d.sessions.length
-    )
-      throw new Error('invalid');
-  }
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as PlanningData;
-      validate(parsed);
+      validatePlanning(parsed);
       data.value = parsed;
     }
   } catch {
@@ -70,7 +68,7 @@ export const usePlanning = defineStore('planning', () => {
   function commit(next: PlanningData) {
     if (blocked.value) return false;
     try {
-      validate(next);
+      validatePlanning(next);
       localStorage.setItem(KEY, JSON.stringify(next));
       data.value = next;
       error.value = '';

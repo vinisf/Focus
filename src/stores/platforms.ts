@@ -30,12 +30,13 @@ export function defaultSheetConfig(): SheetConfig {
   };
 }
 export const usePlatforms = defineStore('platforms', () => {
-  const repository = new PlatformRepository();
+  let repository: PlatformRepository;
   const data = ref({ enabled: true, platforms: [] as Platform[] });
   const blocked = ref(false);
   const busy = ref(false);
   const error = ref('');
   try {
+    repository = new PlatformRepository();
     data.value.platforms = repository.load();
   } catch {
     blocked.value = true;

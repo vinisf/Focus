@@ -1,8 +1,16 @@
 # Focus
 
+## Metas e semana — primeira entrega da issue #1
+
+O menu agora inclui **Metas** e **Semana**, preservando as entradas e funcionalidades anteriores. Em Metas, cadastre áreas da vida, objetivos, marcos verificáveis e vínculos com tarefas existentes. Em Semana, planeje compromissos fixos e blocos flexíveis, com ou sem horário, e remaneje-os pelo editor. Nenhuma meta pessoal é criada automaticamente.
+
+**Configurações → Backup completo** permite exportar e importar todos os conjuntos locais de dados com validação, prévia e confirmação de substituição. O backup completo tem formato próprio; a exportação anterior do rodapé continua disponível e não é importável por esse novo fluxo. Credenciais não entram no arquivo.
+
+Decisões de persistência, limites desta entrega e roteiro de validação: [METAS_SEMANA.md](METAS_SEMANA.md).
+
 ## Tarefas em uma só tela
 
-O menu lateral tem **Meu Dia**, **Tarefas**, **Categorias**, **Hábitos**, **Chamados IEMA**, **Desempenho** e **Configurações**. A entrada **Tarefas** usa o ícone `list-todo`; seu contador soma somente tarefas pendentes e em andamento, sem concluídas ou canceladas.
+O menu lateral tem **Meu Dia**, **Semana**, **Metas**, **Tarefas**, **Categorias**, **Hábitos**, **Chamados IEMA**, **Desempenho** e **Configurações**. A entrada **Tarefas** usa o ícone `list-todo`; seu contador soma somente tarefas pendentes e em andamento, sem concluídas ou canceladas.
 
 As quatro abas de **Tarefas** usam a mesma lista local e os mesmos componentes:
 

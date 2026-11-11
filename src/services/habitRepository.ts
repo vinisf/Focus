@@ -90,7 +90,12 @@ export interface HabitRepository {
   save(data: HabitData): void;
 }
 export class LocalHabitRepository implements HabitRepository {
-  constructor(private storage: Pick<Storage, 'getItem' | 'setItem'> = localStorage) {}
+  constructor(
+    private storage: Pick<Storage, 'getItem' | 'setItem'> = {
+      getItem: (key) => localStorage.getItem(key),
+      setItem: (key, value) => localStorage.setItem(key, value),
+    },
+  ) {}
   load(): HabitData | null {
     const raw = this.storage.getItem(HABITS_KEY);
     if (!raw) return null;

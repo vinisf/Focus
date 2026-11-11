@@ -19,6 +19,21 @@ function validMetricTask(task: PerformanceTask) {
     (task.completedAt === null || Number.isFinite(Date.parse(task.completedAt)))
   );
 }
+export function validatePerformance(data: { version: number; snapshots: TaskSnapshot[] }) {
+  if (
+    data.version !== 1 ||
+    !Array.isArray(data.snapshots) ||
+    data.snapshots.some(
+      (s: TaskSnapshot, i: number) =>
+        !s ||
+        !Number.isFinite(Date.parse(s.at)) ||
+        !Array.isArray(s.tasks) ||
+        !s.tasks.every(validMetricTask) ||
+        (i > 0 && s.at < data.snapshots[i - 1].at),
+    )
+  )
+    throw new Error('invalid');
+}
 export const usePerformanceHistory = defineStore('performance-history', () => {
   const tasks = useTasks();
   const snapshots = ref<TaskSnapshot[]>([]);
@@ -28,19 +43,7 @@ export const usePerformanceHistory = defineStore('performance-history', () => {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (
-        parsed.version !== 1 ||
-        !Array.isArray(parsed.snapshots) ||
-        parsed.snapshots.some(
-          (s: TaskSnapshot, i: number) =>
-            !s ||
-            !Number.isFinite(Date.parse(s.at)) ||
-            !Array.isArray(s.tasks) ||
-            !s.tasks.every(validMetricTask) ||
-            (i > 0 && s.at < parsed.snapshots[i - 1].at),
-        )
-      )
-        throw new Error('invalid');
+      validatePerformance(parsed);
       snapshots.value = parsed.snapshots;
     }
   } catch {
